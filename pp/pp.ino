@@ -28,6 +28,10 @@ int nvev = 0;  //nastavena teplota vevnitr
 int nkom = 100; //nastavena teplota v komine
 long psepf = 0; //casova znamka posledniho sepnuti nektere faze. 
 long psepk = 0; //casova znamka posledniho sepnuti komina
+float vev = 0;
+float pla = 0;
+float kom = 0; 
+
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
@@ -88,13 +92,7 @@ void setup() {
  
 }
 
-
-void loop() {
-  float vev = sensors.getTempC(D_VEVNITR);
-  float pla = sensors.getTempC(D_PLAST);
-  float kom = sensors.getTempC(D_KOMIN);
-
-  //vypisy teplot 
+void vypisTeplot(){
   char cvev[5] = "";
   char cpla[5] = "";
   char ckom[4] = "";
@@ -102,15 +100,20 @@ void loop() {
   dtostrf(pla,5,2,cpla);
   dtostrf(kom,4,2,ckom);
   char buf[15] = "               " ;
-  sprintf(buf, "V: %s P: %s",cvev,cpla);
+  sprintf(buf, "V:%s P:%s",cvev,cpla);
   Serial.print(buf);
   lcdprint(0,buf);
   buf[15] = "               " ;
   sprintf(buf,"K:%s N:%d:%d",ckom,nvev,nkom);
   lcdprint(1,buf);
   Serial.println(buf);
-  
-  //rozhodnuti
+}
+
+void pozapinejCoTreba(){
+  vev = sensors.getTempC(D_VEVNITR);
+  pla = sensors.getTempC(D_PLAST);
+  kom = sensors.getTempC(D_KOMIN); 
+  //topne faze
   if ((millis() - psepf) > PROSTOJFAZE) {
     if (vev < nvev) { digitalWrite (F1, HIGH); psepf=millis(); } 
      else { 
@@ -123,11 +126,44 @@ void loop() {
      else {digitalWrite (F3, LOW);}
   }
 
-  
+  //cerpadlo
   if ((millis() - psepk) > PROSTOJKOMINA) {
     if (kom > nkom ) { digitalWrite (F1, HIGH); psepk=millis(); }
     else {digitalWrite (F1, LOW); psepk=millis();}
+  } 
+}
+
+void loop() {
+  //zmer teploty
+  
+
+  pozapinejCoTreba()
+  vypisTeplot();
+
+  
+  //prenastaveni 
+  long ts = millis();
+  int tnvev = 0;
+  int tnkom = 100; 
+  
+  while (digitalRead(CUDL) == HIGH) {
+    pozapinejCoTreba()
+    tnvev = round(analogRead(PTC1) / AKOEF);
+    tnkom = round(analogRead(PTC2) / AKOEF);
+    char buf[15] = "               " ;
+    sprintf(buf, "Vevnitr: %d",nvev);
+    lcdprint(0,buf);
+    buf[15] = "               " ;
+    sprintf(buf,"K: %d",nkom);
+    lcdprint(1,buf);
+    delay ( 10 );
   }
+
+  if (millis()- ts > 1000){
+    nvev = tnvev;
+    nkom = tnkom;
+  }
+  
     
   delay(10); 
   

@@ -110,9 +110,11 @@ void vypisTeplot(){
 }
 
 void pozapinejCoTreba(){
+  //zmer teploty
   vev = sensors.getTempC(D_VEVNITR);
   pla = sensors.getTempC(D_PLAST);
   kom = sensors.getTempC(D_KOMIN); 
+  
   //topne faze
   if ((millis() - psepf) > PROSTOJFAZE) {
     if (vev < nvev) { digitalWrite (F1, HIGH); psepf=millis(); } 
@@ -137,7 +139,7 @@ void loop() {
   //zmer teploty
   
 
-  pozapinejCoTreba()
+  pozapinejCoTreba();
   vypisTeplot();
 
   
@@ -147,14 +149,14 @@ void loop() {
   int tnkom = 100; 
   
   while (digitalRead(CUDL) == HIGH) {
-    pozapinejCoTreba()
+    pozapinejCoTreba();
     tnvev = round(analogRead(PTC1) / AKOEF);
     tnkom = round(analogRead(PTC2) / AKOEF);
     char buf[15] = "               " ;
-    sprintf(buf, "Vevnitr: %d",nvev);
+    sprintf(buf, "Vevnitr: %d",tnvev);
     lcdprint(0,buf);
     buf[15] = "               " ;
-    sprintf(buf,"K: %d",nkom);
+    sprintf(buf,"K: %d",tnkom);
     lcdprint(1,buf);
     delay ( 10 );
   }

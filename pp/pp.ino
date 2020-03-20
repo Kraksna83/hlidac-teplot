@@ -2,6 +2,10 @@
 #include <DallasTemperature.h>
 #include <LiquidCrystal.h>
 
+//debug
+
+const bool KOMENTATOR = false; 
+
 //definice teplotniho rozestupu pro sepnuti 1 - 2 - 3 fazi a minimalniho rozestupu mezi spinanim 
 const float DELTAT = 0.5;
 const long PROSTOJFAZE = 30000; //v milisekundach, default 30s .  0 = bez prostoje. 
@@ -60,20 +64,25 @@ void lcdprint(int line, char* txt){
 }
 
 
+
 void setup() {
   pinMode(F1,OUTPUT);
   pinMode(F2,OUTPUT);
   pinMode(F3,OUTPUT);
+  pinMode(CHLAD, OUTPUT);
 
   pinMode(PTC1,INPUT);
   pinMode(PTC2,INPUT);
   pinMode(CUDL,INPUT);
   Serial.begin(57600);
+  if (KOMENTATOR) { Serial.println("Startuju LCD a senzory"); }
   lcd.begin(16, 2);
   lcdprint(0, "Praci cest");
   lcdprint(1, "Nastav hodnoty");
   delay(2000);
+  
   sensors.begin();
+  if (KOMENTATOR) { Serial.println("Senzory nastartovany"); }
   while (true) {
     nvev = round(analogRead(PTC1) / AKOEF);
     nkom = round(analogRead(PTC2) / AKOEF);
@@ -89,7 +98,7 @@ void setup() {
     }
     delay ( 10 );
   }
- 
+  if (KOMENTATOR) { Serial.print("Nastaveno : ");Serial.print(nvev);Serial.print("-");Serial.println(nkom); } 
 }
 
 void vypisTeplot(){
@@ -111,27 +120,28 @@ void vypisTeplot(){
 
 void pozapinejCoTreba(){
   //zmer teploty
-  vev = sensors.getTempC(D_VEVNITR);
-  pla = sensors.getTempC(D_PLAST);
-  kom = sensors.getTempC(D_KOMIN); 
+  if (KOMENTATOR) { Serial.println("Temploty z cidel ( vevnitr, plast, komin ) : "); }
+  vev = sensors.getTempC(D_VEVNITR);  if (KOMENTATOR) { Serial.println(vev); }
+  pla = sensors.getTempC(D_PLAST);  if (KOMENTATOR) { Serial.println(pla); }
+  kom = sensors.getTempC(D_KOMIN);   if (KOMENTATOR) { Serial.println(kom); }
   
   //topne faze
   if ((millis() - psepf) > PROSTOJFAZE) {
-    if (vev < nvev) { digitalWrite (F1, HIGH); psepf=millis(); } 
+    if (vev < nvev) { digitalWrite (F1, HIGH); psepf=millis(); if (KOMENTATOR) { Serial.println("Zapnuta faze 1");} }
      else { 
-      if (vev > nvev) { digitalWrite (F1, LOW); psepf=millis(); }
+      if (vev > nvev) { digitalWrite (F1, LOW); psepf=millis();  if (KOMENTATOR) { Serial.println("Vypnuta faze 1"); }}
      }
 
-    if (vev < nvev - DELTAT * 2) { digitalWrite (F2, HIGH); }
-     else {digitalWrite (F2, LOW);}
-    if (vev < nvev - DELTAT * 3) { digitalWrite (F3, HIGH); }
-     else {digitalWrite (F3, LOW);}
+    if (vev < nvev - DELTAT * 2) { digitalWrite (F2, HIGH); if (KOMENTATOR) { Serial.println("Zapnuta faze 2");} }
+     else {digitalWrite (F2, LOW);  if (KOMENTATOR) { Serial.println("Vypnuta faze 2");} }
+    if (vev < nvev - DELTAT * 3) { digitalWrite (F3, HIGH); if (KOMENTATOR) { Serial.println("Zapnuta faze 3");}}
+     else {digitalWrite (F3, LOW); if (KOMENTATOR) { Serial.println("Vypnuta faze 3");} }
   }
 
   //cerpadlo
   if ((millis() - psepk) > PROSTOJKOMINA) {
-    if (kom > nkom ) { digitalWrite (F1, HIGH); psepk=millis(); }
-    else {digitalWrite (F1, LOW); psepk=millis();}
+    if (kom > nkom ) { digitalWrite (F1, HIGH); psepk=millis(); if (KOMENTATOR) { Serial.println("Zapnuto cerpadlo. ");} }
+    else {digitalWrite (F1, LOW); psepk=millis();  if (KOMENTATOR) { Serial.println("Vypnuto cerpadlo. ");}}
   } 
 }
 
@@ -140,6 +150,7 @@ void loop() {
   
 
   pozapinejCoTreba();
+  
   vypisTeplot();
 
   
@@ -147,8 +158,9 @@ void loop() {
   long ts = millis();
   int tnvev = 0;
   int tnkom = 100; 
-  
+  bool dbg = true;
   while (digitalRead(CUDL) == HIGH) {
+    if (KOMENTATOR and dbg) { Serial.println("Nastavovaci rezim "); dbg = false; } 
     pozapinejCoTreba();
     tnvev = round(analogRead(PTC1) / AKOEF);
     tnkom = round(analogRead(PTC2) / AKOEF);
@@ -164,7 +176,11 @@ void loop() {
   if (millis()- ts > 1000){
     nvev = tnvev;
     nkom = tnkom;
+     if (KOMENTATOR) { Serial.print("Nove hodnoty prijaty : ");Serial.print(nvev);Serial.print("-");Serial.println(nkom); }
+  }else{
+    if (KOMENTATOR) { Serial.println("Hodnoty ignorovany, protoze nastavovaci rezim byl prilis kratky.");}
   }
+  
   
     
   delay(10); 
